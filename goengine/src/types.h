@@ -4,6 +4,9 @@ typedef struct
 {
     int size;
     Stone board[MAX_BOARD][MAX_BOARD];
+
+    int cons_passes; // 0,1 or 2
+    int game_over;   // 0 or 1
 } GameState;
 
 typedef enum
