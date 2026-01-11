@@ -20,7 +20,7 @@ void generate_move(Board *b, Color color);
 bool has_liberties(Board *b, int r, int c, Color color);
 
 // Αφαιρεί μια αιχμαλωτισμένη ομάδα από το ταμπλό
-void remove_group(Board *b, int r, int c, Color color);
+int remove_group(Board *b, int r, int c, Color color);
 
 // --- Συναρτήσεις Πρωτοκόλλου GTP ---
 void handle_help();                                                // Η ειδική εντολή της εκφώνησης

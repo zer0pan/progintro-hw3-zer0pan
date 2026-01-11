@@ -96,6 +96,11 @@ int main()
             printf("= \n\n");
             break;
         }
+        else if (strcmp(cmd, "komi") == 0)
+        {
+            game_board.komi = atof(arg1);
+            printf("= \n\n");
+        }
         else if (strcmp(cmd, "final_score") == 0)
         {
             float black_s = calculate_score(&game_board, BLACK);

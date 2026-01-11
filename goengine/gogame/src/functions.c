@@ -12,7 +12,7 @@ bool visited[MAX_BOARD][MAX_BOARD];
 void init_board(Board *b, int size)
 {
     b->size = (size > MAX_BOARD) ? MAX_BOARD : size;
-    b->komi = 7.5; // Τυπικό κομί για Κινέζικους κανόνες
+    b->komi = 6.5; // Τυπικό κομί για Κινέζικους κανόνες
     clear_board(b);
 }
 
@@ -50,15 +50,13 @@ bool has_liberties(Board *b, int r, int c, Color color)
 }
 
 // Αφαιρεί μια ομάδα πετρών που αιχμαλωτίστηκε
-void remove_group(Board *b, int r, int c, Color color)
+int remove_group(Board *b, int r, int c, Color color)
 {
     if (r < 0 || r >= b->size || c < 0 || c >= b->size || b->grid[r][c] != color)
-        return;
+        return 0;
     b->grid[r][c] = EMPTY;
-    int dr[] = {-1, 1, 0, 0};
-    int dc[] = {0, 0, -1, 1};
-    for (int i = 0; i < 4; i++)
-        remove_group(b, r + dr[i], c + dc[i], color);
+    return 1 + remove_group(b, r - 1, c, color) + remove_group(b, r + 1, c, color) +
+           remove_group(b, r, c - 1, color) + remove_group(b, r, c + 1, color);
 }
 
 int play_move(Board *b, Color color, char *coords)
@@ -87,8 +85,11 @@ int play_move(Board *b, Color color, char *coords)
         {
             if (!has_liberties(b, nr, nc, opponent))
             {
-                remove_group(b, nr, nc, opponent);
-                captured = true;
+                int caps = remove_group(b, nr, nc, opponent);
+                if (color == BLACK)
+                    b->black_caps += caps;
+                else
+                    b->white_caps += caps;
             }
         }
     }
