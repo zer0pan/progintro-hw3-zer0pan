@@ -219,55 +219,130 @@ typedef struct
     int r, c;
 } Move;
 
+// Βοηθητική συνάρτηση για μέτρηση συνολικών πετρών ενός χρώματος στο ταμπλό
+int count_stones(Board *b, Color c)
+{
+    int count = 0;
+    for (int i = 0; i < b->size; i++)
+        for (int j = 0; j < b->size; j++)
+            if (b->grid[i][j] == c)
+                count++;
+    return count;
+}
+
+// Ελέγχει αν μια θέση είναι "μάτι" για ένα χρώμα
+int is_eye(Board *b, int r, int c, Color color)
+{
+    int dr[] = {-1, 1, 0, 0};
+    int dc[] = {0, 0, -1, 1};
+    int count = 0;
+    for (int i = 0; i < 4; i++)
+    {
+        int nr = r + dr[i], nc = c + dc[i];
+        if (nr < 0 || nr >= b->size || nc < 0 || nc >= b->size)
+            count++; // Τα όρια μετράνε ως προστασία
+        else if (b->grid[nr][nc] == color)
+            count++;
+    }
+    return (count == 4);
+}
+
 void generate_move(Board *b, Color color)
 {
-    Move legal_moves[MAX_BOARD * MAX_BOARD];
-    int count = 0;
-    char coords[10];
+    // Αρχικοποιούμε το best_score με μια τιμή που αντιπροσωπεύει το PASS.
+    // Αν καμία κίνηση δεν είναι καλύτερη από το "τίποτα", τότε το score παραμένει χαμηλά.
+    int best_score = -500;
+    int best_r = -1, best_c = -1;
+    Color opponent = (color == BLACK) ? WHITE : BLACK;
 
-    // 1. Καταγραφή όλων των νόμιμων κινήσεων
     for (int i = 0; i < b->size; i++)
     {
         for (int j = 0; j < b->size; j++)
         {
             if (b->grid[i][j] == EMPTY)
             {
-                // Μετατροπή σε string για να την ελέγξουμε με την play_move
+                char coords[10];
                 char col_char = (j >= 8) ? 'A' + j + 1 : 'A' + j;
                 sprintf(coords, "%c%d", col_char, i + 1);
 
-                // Κάνουμε μια δοκιμή σε ένα προσωρινό αντίγραφο του ταμπλό
-                Board temp = *b;
-                if (play_move(&temp, color, coords))
+                Board temp_board = *b;
+                if (play_move(&temp_board, color, coords))
                 {
-                    legal_moves[count].r = i;
-                    legal_moves[count].c = j;
-                    count++;
+                    int current_score = 0;
+
+                    // 1. Έλεγχος Αιχμαλωσίας (Capture)
+                    int opp_before = count_stones(b, opponent);
+                    int opp_after = count_stones(&temp_board, opponent);
+                    int captured = opp_before - opp_after;
+                    current_score += captured * 1000;
+
+                    // 2. Έλεγχος Αυτοσυντήρησης (Self-Preservation)
+                    // Αν η κίνηση που παίξαμε οδηγεί σε δική μας αιχμαλωσία στην επόμενη κίνηση
+                    // (Πολύ απλό heuristic: αν η νέα πέτρα έχει μόνο 1 ελευθερία)
+                    if (count_liberties(&temp_board, i, j) == 1 && captured == 0)
+                    {
+                        current_score -= 800; // Μεγάλη ποινή για κίνηση "αυτοκτονίας"
+                    }
+
+                    // 3. Στρατηγική Περιοχής (Territory)
+                    int center = b->size / 2;
+                    int dist = abs(i - center) + abs(j - center);
+                    current_score += (b->size - dist); // Bonus για κινήσεις κοντά στο κέντρο
+
+                    // 4. Αποφυγή πλήρωσης δικών μας "ματιών" (Eyes)
+                    // Αν μια κίνηση δεν αιχμαλωτίζει και μειώνει τις δικές μας ελευθερίες σε κλειστή περιοχή
+                    if (is_eye(b, i, j, color) && captured == 0)
+                    {
+                        current_score -= 600;
+                    }
+
+                    if (current_score > best_score)
+                    {
+                        best_score = current_score;
+                        best_r = i;
+                        best_c = j;
+                    }
                 }
             }
         }
     }
 
-    // 2. Επιλογή μιας κίνησης
-    if (count > 0)
+    // Αν το best_score παραμένει κάτω από το όριο ή δεν βρέθηκε καμία νόμιμη κίνηση
+    if (best_r != -1 && best_score > -200)
     {
-        srand(time(NULL));
-        int index = rand() % count; // Τυχαία επιλογή από τις νόμιμες
-        int r = legal_moves[index].r;
-        int c = legal_moves[index].c;
+        char final_coords[10];
+        char col_char = (best_c >= 8) ? 'A' + best_c + 1 : 'A' + best_c;
+        sprintf(final_coords, "%c%d", col_char, best_r + 1);
 
-        char col_char = (c >= 8) ? 'A' + c + 1 : 'A' + c;
-        sprintf(coords, "%c%d", col_char, r + 1);
-
-        // Εκτελούμε την κίνηση στο πραγματικό ταμπλό
-        play_move(b, color, coords);
-
-        // Εκτύπωση για το GTP
-        printf("= %s\n\n", coords);
+        play_move(b, color, final_coords);
+        printf("= %s\n\n", final_coords);
     }
     else
     {
-        // Αν δεν υπάρχει καμία νόμιμη κίνηση
+        // Η μηχανή κρίνει ότι καμία κίνηση δεν είναι ωφέλιμη
         printf("= pass\n\n");
     }
+}
+
+float calculate_score(Board *b, Color color)
+{
+    float score = (color == WHITE) ? b->komi : 0; // Ο Λευκός ξεκινά με το Komi (7.5)
+
+    for (int i = 0; i < b->size; i++)
+    {
+        for (int j = 0; j < b->size; j++)
+        {
+            if (b->grid[i][j] == color)
+            {
+                score += 1.0; // Μονάδα για κάθε πέτρα
+            }
+            else if (b->grid[i][j] == EMPTY)
+            {
+                // Εδώ θα μπορούσε να μπει έλεγχος για περιοχή (territory)
+                // Για την εργασία, οι περισσότεροι μετρούν πέτρες + αιχμάλωτους
+                // ή απλά τις πέτρες αν το παιχνίδι τελειώσει σωστά.
+            }
+        }
+    }
+    return score;
 }

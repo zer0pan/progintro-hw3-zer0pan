@@ -96,6 +96,16 @@ int main()
             printf("= \n\n");
             break;
         }
+        else if (strcmp(cmd, "final_score") == 0)
+        {
+            float black_s = calculate_score(&game_board, BLACK);
+            float white_s = calculate_score(&game_board, WHITE);
+
+            if (black_s > white_s)
+                printf("= B+%.1f\n\n", black_s - white_s);
+            else
+                printf("= W+%.1f\n\n", white_s - black_s);
+        }
         else
         {
             // Για οποιαδήποτε άλλη εντολή που δεν υποστηρίζουμε

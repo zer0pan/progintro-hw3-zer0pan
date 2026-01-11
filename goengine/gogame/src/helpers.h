@@ -27,4 +27,5 @@ void handle_help();                                                // Η ειδ�
 Color string_to_color(char *s);                                    // Μετατρέπει το "black"/"white" σε Color enum
 void coord_to_indices(char *coords, int *row, int *col, int size); // Μετατρέπει το "A19" σε indices πίνακα
 
+float calculate_score(Board *b, Color color);
 #endif
