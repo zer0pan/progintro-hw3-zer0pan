@@ -14,5 +14,6 @@
 Μεταβείτε στον κατάλογο του `goengine/gogame/src` και εκτελέστε την κατάλληλη εντολή:
 
 ```bash
-# Παράδειγμα:
-# make 
+#
+make
+gcc functions.c goteam.c -o go_engine
